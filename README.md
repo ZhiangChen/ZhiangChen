@@ -1,2 +1,2 @@
 # Image Classification
-Torchvision-based image classification
+deep learning image classification
