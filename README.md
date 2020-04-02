@@ -1,2 +1,2 @@
-# ZhiangChen
-image_classification
+# Image Classification
+Torchvision-based image classification
