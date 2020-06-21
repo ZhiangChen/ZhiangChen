@@ -13,11 +13,11 @@ def train(train_loader, model, criterion, optimizer, epoch, device, print_freq):
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
+    top2 = AverageMeter('Acc@2', ':6.2f')
     lr = AverageMeter('Lr', ':.6f')
     progress = ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, losses, lr, top1, top5],
+        [batch_time, data_time, losses, lr, top1],
         prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
@@ -40,10 +40,10 @@ def train(train_loader, model, criterion, optimizer, epoch, device, print_freq):
         loss = criterion(output, target)
 
         # measure accuracy and record loss
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        acc1, acc2 = accuracy(output, target, topk=(1, 2))
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
-        top5.update(acc5[0], images.size(0))
+        top2.update(acc2[0], images.size(0))
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -61,10 +61,10 @@ def validate(val_loader, model, criterion, device, print_freq=100):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
+    top2 = AverageMeter('Acc@2', ':6.2f')
     progress = ProgressMeter(
         len(val_loader),
-        [batch_time, losses, top1, top5],
+        [batch_time, losses, top1, top2],
         prefix='Test: ')
 
     # switch to evaluate mode
@@ -82,10 +82,11 @@ def validate(val_loader, model, criterion, device, print_freq=100):
             loss = criterion(output, target)
 
             # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            acc1, acc2 = accuracy(output, target, topk=(1, 2))
+            #acc1 = accuracy(output, target, topk=(1))
             losses.update(loss.item(), images.size(0))
             top1.update(acc1[0], images.size(0))
-            top5.update(acc5[0], images.size(0))
+            top2.update(acc2[0], images.size(0))
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -95,10 +96,23 @@ def validate(val_loader, model, criterion, device, print_freq=100):
                 progress.display(i)
 
         # TODO: this should also be done with the ProgressMeter
-        print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
-              .format(top1=top1, top5=top5))
+        print(' * Acc@1 {top1.avg:.3f} '
+              .format(top1=top1))
 
     return top1.avg
+
+def test(model, dataset, device):
+	model.eval()
+	total_nm = len(dataset)
+	correct_nm = 0
+	for i in range(total_nm):
+		image, label = dataset[i]
+		pred = model(image.unsqueeze(0).to(device))[0]
+		pred = pred.to("cpu").detach().numpy().argmax()
+		if pred == label:
+			correct_nm += 1
+	return float(correct_nm)/total_nm
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""

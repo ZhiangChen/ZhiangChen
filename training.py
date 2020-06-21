@@ -10,7 +10,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 from utils import *
 import torchvision.models as models
-
+from data import EurekaDataset
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -20,6 +20,16 @@ torch.manual_seed(0)
 
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
+
+
+eureka_normalize = transforms.Normalize(mean=[0.44, 0.50, 0.43],
+                                     std=[0.26, 0.25, 0.26])
+
+eureka_transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    eureka_normalize,])
+
 
 train_transform = transforms.Compose([
     transforms.RandomResizedCrop(224),
@@ -32,7 +42,7 @@ test_transform = transforms.Compose([
     transforms.ToTensor(),
     normalize,])
 
-def neural_network(architecture, nm_classes, pretrained=True, change_last_layer=False):
+def neural_network(architecture, nm_classes, pretrained=True, change_last_layer=True):
     assert architecture in model_names
     print("=> creating model '{}'".format(architecture))
     model = models.__dict__[architecture](pretrained=pretrained)
@@ -58,41 +68,47 @@ def cifar10(root='./datasets/cifar10/', val=True):
     """
     return train, test
 
-
-
+def eureka():
+	train = EurekaDataset('./datasets/Eureka/images0/','./datasets/Eureka/class.json', eureka_transform)
+	test = EurekaDataset('./datasets/Eureka/images_test0/','./datasets/Eureka/class.json', eureka_transform)
+	return train, test
 
 if __name__ == '__main__':
     cuda = 'cuda:0'
     device = torch.device(cuda)
-    nm_classes = 10
-    train_dataset, test_dataset = cifar10()
+    nm_classes = 3
+    train_dataset, test_dataset = eureka()
 
     train_dataloader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=4, shuffle=True, num_workers=4, collate_fn=collate_fn)
+        train_dataset, batch_size=4, shuffle=True, num_workers=8, collate_fn=collate_fn)
     test_dataloader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=4, shuffle=True, num_workers=4, collate_fn=collate_fn)
+        test_dataset, batch_size=4, shuffle=True, num_workers=8, collate_fn=collate_fn)
 
-    model = neural_network('resnet152', nm_classes)
+    model = neural_network('resnext101_32x8d', nm_classes)
 
     #if you want to load weight
+	#model.load_state_dict(torch.load("trained_param_eureka_cls/epoch_0002.param"))	
+	#model.eval()	
 
     model.to(device)
 
     criterion = nn.CrossEntropyLoss().to(device)
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.00001)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+    optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9, weight_decay=0.00001)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.65)
 
     init_epoch = 0
-    num_epochs = 2
-    print_freq = 500
+    num_epochs = 60
+    print_freq = 100
 
-    save_param = "trained_param_cifar10/epoch_{:04d}.param".format(init_epoch)
+    save_param = "trained_param3_resnext101/epoch_{:04d}.param".format(init_epoch)
     torch.save(model.state_dict(), save_param)
 
     for epoch in range(init_epoch, init_epoch + num_epochs):
-        save_param = "trained_param_cifar10/epoch_{:04d}.param".format(epoch)
+        save_param = "trained_param3_resnext101/epoch_{:04d}.param".format(epoch)
         train(train_dataloader, model, criterion, optimizer, epoch, device, print_freq)
         lr_scheduler.step()
-        validate(test_dataloader, model, criterion, device)
+        #validate(test_dataloader, model, criterion, device)
+        acc = test(model, test_dataset, device)
+        print("acc: %f" % acc)
         torch.save(model.state_dict(), save_param)
