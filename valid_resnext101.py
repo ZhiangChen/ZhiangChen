@@ -11,6 +11,7 @@ import torchvision.transforms as transforms
 from utils import *
 import torchvision.models as models
 from data import EurekaDataset
+import os
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -70,8 +71,8 @@ def cifar10(root='./datasets/cifar10/', val=True):
 
 def eureka():
 	train = EurekaDataset('./datasets/Eureka/images/','./datasets/Eureka/class.json', eureka_transform)
-	test = EurekaDataset('./datasets/Eureka/images_test/','./datasets/Eureka/class.json', eureka_transform)
-	test.addJson('./datasets/Eureka/label_102.json')
+	test = EurekaDataset('./datasets/Eureka/images_test/','./datasets/Eureka/label_102.json', eureka_transform)
+	#test.addJson('./datasets/Eureka/label_102.json')
 	return train, test
 
 if __name__ == '__main__':
@@ -98,18 +99,31 @@ if __name__ == '__main__':
     optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9, weight_decay=0.00001)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.65)
 
-    init_epoch = 0
-    num_epochs = 60
-    print_freq = 100
+    #init_epoch = 0
+    #num_epochs = 60
+    #print_freq = 100
 
-    save_param = "trained_param3_resnext101/epoch_{:04d}.param".format(init_epoch)
-    torch.save(model.state_dict(), save_param)
+    #save_param = "trained_param3_resnext101/epoch_{:04d}.param".format(init_epoch)
+    #torch.save(model.state_dict(), save_param)
+    weight_path = "trained_param_resnext101"
+    weights = [f for f in os.listdir(weight_path) if f.endswith(".param")]
+    weights.sort()
 
-    for epoch in range(init_epoch, init_epoch + num_epochs):
-        save_param = "trained_param3_resnext101/epoch_{:04d}.param".format(epoch)
-        train(train_dataloader, model, criterion, optimizer, epoch, device, print_freq)
-        lr_scheduler.step()
-        #validate(test_dataloader, model, criterion, device)
-        acc = test(model, test_dataset, device)
-        print("acc: %f" % acc)
-        torch.save(model.state_dict(), save_param)
+    w = "epoch_0052.param"
+    weight_name = os.path.join(weight_path, w)
+    model.load_state_dict(torch.load(weight_name))
+    validate(test_dataloader, model, criterion, device)
+
+    """
+    for w in weights:
+        weight_name = os.path.join(weight_path, w)
+        #save_param = "trained_param3_resnext101/epoch_{:04d}.param".format(epoch)
+        #train(train_dataloader, model, criterion, optimizer, epoch, device, print_freq)
+        #lr_scheduler.step()
+        print(weight_name)
+        model.load_state_dict(torch.load(weight_name))
+        validate(test_dataloader, model, criterion, device)
+        #acc = test(model, test_dataset, device)
+        #print("acc: %f" % acc)
+        #torch.save(model.state_dict(), save_param)
+    """

@@ -26,7 +26,7 @@ data_transform = transforms.Compose([
 
 
 class EurekaDataset(Dataset):
-	def __init__(self, root_dir, json_file, transform=None):
+	def __init__(self, root_dir, json_file, transform=None, binary_cls=False):
 		assert os.path.isdir(root_dir)
 		assert os.path.isfile(json_file)
 		self.root_dir = root_dir
@@ -35,6 +35,7 @@ class EurekaDataset(Dataset):
 		self.dataset = []
 		self.__readJson(json_file)
 		self.transform = transform
+		self.binary_cls = binary_cls
 
 	def __readJson(self, json_file):
 		with open(json_file, 'r') as f:
@@ -64,8 +65,39 @@ class EurekaDataset(Dataset):
 									image_path = os.path.join(self.root_dir, image_file)
 									data['image_path'] = image_path
 									data['label'] = clas
+									self.dataset.append(data)	
+
+
+	def addJson(self, json_file):
+		assert os.path.isfile(json_file)
+		with open(json_file, 'r') as f:
+			labels = json.load(f)
+		for label in labels:
+			if label['Label']:
+				if label['Label'] == 'Skip':
+					continue
+				dataset_name = label['Dataset Name']
+				image_name = label['External ID']
+				image_file = dataset_name + '_' + image_name
+				if image_file in self.images:
+					#print(label['Label'])
+					if 'tile_damage' in label['Label']:
+						data = {}
+						image_path = os.path.join(self.root_dir, image_file)
+						clas = self.classes.index(label['Label']['tile_damage'])
+						data['image_path'] = image_path
+						data['label'] = clas
+						self.dataset.append(data)
+						if clas == 2:
+							#print(image_file)
+							for i in range(1,8):
+								data = {}
+								image_file = str(i) + '_' + image_file
+								if image_file in self.images:
+									image_path = os.path.join(self.root_dir, image_file)
+									data['image_path'] = image_path
+									data['label'] = clas
 									self.dataset.append(data)
-	
 
 	def __len__(self):
 		return len(self.dataset)
@@ -78,8 +110,9 @@ class EurekaDataset(Dataset):
 		image = image.resize((600,600))
 		if self.transform:
 			image = self.transform(image)
-		#if label==2:
-		#	label=1
+		if self.binary_cls:
+			if label>=2:
+				label=1
 		return image, label
 
 

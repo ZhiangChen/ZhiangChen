@@ -113,6 +113,31 @@ def test(model, dataset, device):
 			correct_nm += 1
 	return float(correct_nm)/total_nm
 
+def test_bin(model, dataset, device):
+    model.eval()
+    total_nm = len(dataset)
+    correct_nm = 0
+    for i in range(total_nm):
+        image, label = dataset[i]
+        pred = model(image.unsqueeze(0).to(device))[0]
+        pred = pred.to("cpu").detach().numpy().argmax()
+        pred = pred > 0
+        label = label > 0
+        if pred == label:
+            correct_nm += 1
+    return float(correct_nm)/total_nm
+
+
+def infer(model, dataset, device):
+    model.eval()
+    total_nm = len(dataset)
+    results = []
+    for i in range(total_nm):
+        image, label = dataset[i]
+        pred = model(image.unsqueeze(0).to(device))[0]
+        pred = pred.to("cpu").detach().numpy().argmax()
+        results.append(pred)
+    return results
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
